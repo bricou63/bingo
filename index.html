@@ -34,14 +34,15 @@
     }
 
     header {
-      padding: 18px 24px;
+      padding: 14px 24px;
       text-align: center;
-      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+      background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
       border-bottom: 1px solid rgba(245, 192, 66, 0.25);
+      z-index: 10;
     }
 
     .sub-head {
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       letter-spacing: 4px;
       text-transform: uppercase;
       color: #ff94ba;
@@ -50,7 +51,7 @@
 
     h1 {
       font-family: 'Cinzel', serif;
-      font-size: clamp(2.2rem, 5vw, 4rem);
+      font-size: clamp(2rem, 4.5vw, 3.6rem);
       font-weight: 900;
       letter-spacing: 6px;
       background: linear-gradient(45deg, #fff 0%, var(--gold-light) 40%, var(--gold) 70%, #d98818 100%);
@@ -58,11 +59,11 @@
       -webkit-text-fill-color: transparent;
       text-shadow: 0 0 30px rgba(245, 192, 66, 0.45);
       line-height: 1.1;
-      margin: 4px 0;
+      margin: 2px 0;
     }
 
     .hosts {
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: 700;
       color: #ffd6e4;
       text-shadow: 0 0 10px rgba(217, 4, 75, 0.6);
@@ -70,15 +71,17 @@
 
     main {
       flex: 1;
-      padding: 24px 40px;
+      padding: 16px 30px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      max-width: 1600px;
+      gap: 16px;
+      max-width: 1700px;
       margin: 0 auto;
       width: 100%;
+      height: calc(100vh - 120px);
     }
 
+    /* Écran d'accueil standard */
     #welcome-screen {
       flex: 1;
       display: flex;
@@ -114,10 +117,40 @@
       color: #f7b5cc;
     }
 
+    /* Cadre Cinéma YouTube */
+    #youtube-screen {
+      display: none;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 0;
+    }
+
+    .video-wrapper {
+      position: relative;
+      width: 95%;
+      height: 100%;
+      max-height: calc(100vh - 170px);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 3px solid var(--gold);
+      box-shadow: 0 0 35px rgba(217, 4, 75, 0.7), 0 0 15px rgba(245, 192, 66, 0.5);
+      background: #000;
+    }
+
+    .video-wrapper iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* Écran de Jeu */
     #game-screen {
       display: none;
       flex-direction: column;
-      gap: 24px;
+      gap: 20px;
       width: 100%;
     }
 
@@ -303,12 +336,21 @@
   </header>
 
   <main>
+    <!-- 1. Accueil standard -->
     <div id="welcome-screen">
       <div class="heart-icon">♥</div>
       <div class="welcome-title">Bienvenue au Bingo Drag !</div>
       <div class="welcome-text">Préparez vos grilles et vos plus beaux sourires. Le tirage va bientôt commencer !</div>
     </div>
 
+    <!-- 2. Écran Vidéo / Playlist YouTube -->
+    <div id="youtube-screen">
+      <div class="video-wrapper">
+        <iframe id="yt-iframe" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      </div>
+    </div>
+
+    <!-- 3. Écran du jeu en cours -->
     <div id="game-screen">
       <div class="recent-bar">
         <span class="label">Dernier numéro tiré</span>
@@ -353,51 +395,101 @@
     let lastAnimatedNumber = null;
     let bigNumberTimeout = null;
     let bingoInterval = null;
+    let currentVideoEmbed = "";
 
     function renderState(state) {
-      if (!state) state = { numbers: [], lastBingoAt: 0 };
+      if (!state) state = { numbers: [], lastBingoAt: 0, showYoutube: false, youtubeUrl: "" };
       const numbers = state.numbers || [];
+      const showYoutube = state.showYoutube || false;
+      const youtubeUrl = state.youtubeUrl || "";
+
       const welcome = document.getElementById("welcome-screen");
+      const ytScreen = document.getElementById("youtube-screen");
+      const ytIframe = document.getElementById("yt-iframe");
       const game = document.getElementById("game-screen");
       const ballsGrid = document.getElementById("balls-grid");
       const lastBadge = document.getElementById("last-number-display");
       const totalBadge = document.getElementById("total-count-display");
 
-      if (numbers.length === 0) {
-        welcome.style.display = "flex";
+      // Gestion du flux YouTube
+      if (showYoutube && youtubeUrl) {
+        welcome.style.display = "none";
         game.style.display = "none";
+        ytScreen.style.display = "flex";
+
+        const embedSrc = getEmbedUrl(youtubeUrl);
+        if (currentVideoEmbed !== embedSrc) {
+          currentVideoEmbed = embedSrc;
+          ytIframe.src = embedSrc;
+        }
+      } else {
+        ytScreen.style.display = "none";
+        if (currentVideoEmbed !== "") {
+          currentVideoEmbed = "";
+          ytIframe.src = "";
+        }
+
+        if (numbers.length === 0) {
+          welcome.style.display = "flex";
+          game.style.display = "none";
+          ballsGrid.innerHTML = "";
+          lastAnimatedNumber = null;
+          currentNumbers = [];
+          return;
+        }
+
+        welcome.style.display = "none";
+        game.style.display = "flex";
+      }
+
+      if (numbers.length > 0) {
+        const lastNum = numbers[numbers.length - 1];
+        lastBadge.textContent = lastNum;
+        totalBadge.textContent = `${numbers.length} numéro${numbers.length > 1 ? 's' : ''} sorti${numbers.length > 1 ? 's' : ''}`;
+
+        if (lastNum !== lastAnimatedNumber && numbers.length > currentNumbers.length) {
+          showBigNumber(lastNum);
+        }
+        lastAnimatedNumber = lastNum;
+        currentNumbers = [...numbers];
+
         ballsGrid.innerHTML = "";
-        lastAnimatedNumber = null;
-        currentNumbers = [];
-        return;
+        numbers.forEach((num, index) => {
+          const ball = document.createElement("div");
+          ball.className = `ball ${index % 2 === 1 ? 'ruby-ball' : ''}`;
+          ball.textContent = num;
+          ballsGrid.appendChild(ball);
+        });
       }
-
-      welcome.style.display = "none";
-      game.style.display = "flex";
-
-      const lastNum = numbers[numbers.length - 1];
-      lastBadge.textContent = lastNum;
-      totalBadge.textContent = `${numbers.length} numéro${numbers.length > 1 ? 's' : ''} sorti${numbers.length > 1 ? 's' : ''}`;
-
-      if (lastNum !== lastAnimatedNumber && numbers.length > currentNumbers.length) {
-        showBigNumber(lastNum);
-      }
-      lastAnimatedNumber = lastNum;
-      currentNumbers = [...numbers];
-
-      ballsGrid.innerHTML = "";
-      numbers.forEach((num, index) => {
-        const ball = document.createElement("div");
-        ball.className = `ball ${index % 2 === 1 ? 'ruby-ball' : ''}`;
-        ball.textContent = num;
-        ballsGrid.appendChild(ball);
-      });
 
       const now = Date.now();
       if (state.lastBingoAt && (now - state.lastBingoAt < 20000)) {
         const remaining = 20000 - (now - state.lastBingoAt);
         triggerBingoScreen(remaining);
       }
+    }
+
+    // Convertit tout format de lien YouTube (Vidéo ou Playlist) en URL Embed propre
+    function getEmbedUrl(rawUrl) {
+      if (!rawUrl) return "";
+      try {
+        const url = new URL(rawUrl.trim());
+        const listId = url.searchParams.get("list");
+
+        // Cas d'une Playlist
+        if (listId) {
+          return `https://www.youtube.com/embed/videoseries?list=${listId}&autoplay=1`;
+        }
+        // Cas d'une Vidéo normale
+        let videoId = url.searchParams.get("v");
+        if (!videoId && url.hostname.includes("youtu.be")) {
+          videoId = url.pathname.replace("/", "");
+        }
+        if (videoId) {
+          return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        }
+      } catch(e) {}
+      return rawUrl;
     }
 
     function showBigNumber(num) {
