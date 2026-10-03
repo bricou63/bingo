@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Régie BINGO DRAG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg: #0f020a;
+      --panel: #1e0515;
+      --ruby: #d9044b;
+      --gold: #f5c042;
+      --border: rgba(245, 192, 66, 0.25);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      text-align: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 2rem;
+      color: var(--gold);
+      letter-spacing: 2px;
+    }
+
+    .controls-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    input[type="number"] {
+      flex: 1;
+      font-size: 2rem;
+      font-weight: 800;
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: 2px solid var(--gold);
+      background: #000;
+      color: #fff;
+      text-align: center;
+    }
+
+    button {
+      cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 800;
+      border-radius: 10px;
+      border: none;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    .btn-submit {
+      padding: 14px 28px;
+      font-size: 1.2rem;
+      background: linear-gradient(135deg, var(--gold), #c9880e);
+      color: #120005;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .btn-undo {
+      background: #3a1c28;
+      border: 1px solid #ff5983;
+      color: #ff9cb6;
+      padding: 14px;
+      font-size: 1rem;
+    }
+
+    .btn-bingo {
+      grid-column: span 2;
+      background: linear-gradient(135deg, var(--ruby), #96002f);
+      color: #fff;
+      font-size: 1.4rem;
+      letter-spacing: 3px;
+      padding: 16px;
+      box-shadow: 0 0 20px rgba(217, 4, 75, 0.4);
+    }
+
+    .btn-reset {
+      grid-column: span 2;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #999;
+      padding: 10px;
+      font-size: 0.85rem;
+    }
+
+    .btn-reset:hover {
+      border-color: #f00;
+      color: #f00;
+    }
+
+    .grid-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .grid-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffb5cb;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .numbers-board {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+    }
+
+    .board-cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #2a0b1f;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .board-cell.selected {
+      background: var(--gold);
+      color: #120005;
+      font-weight: 900;
+      box-shadow: 0 0 8px rgba(245, 192, 66, 0.6);
+    }
+
+    .board-cell.last-drawn {
+      background: var(--ruby) !important;
+      color: #fff !important;
+      animation: pulseCell 1s infinite alternate;
+    }
+
+    @keyframes pulseCell {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.08); }
+    }
+
+    .history-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .history-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      background: #3b0e27;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border: 1px solid var(--ruby);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>RÉGIE BINGO DRAG</h1>
+      <p style="font-size:0.85rem; color:#aaa;">Panneau de contrôle & transmission en direct</p>
+    </header>
+
+    <div class="controls-card">
+      <form id="add-form" class="input-row">
+        <input type="number" id="manual-input" min="1" max="90" placeholder="N°" autofocus required>
+        <button type="submit" class="btn-submit">Valider</button>
+      </form>
+
+      <div class="actions-grid">
+        <button class="btn-undo" id="btn-undo">↩ Annuler le dernier</button>
+        <button class="btn-undo" id="btn-sound-test" style="border-color:#555; color:#ddd;">Régie OK</button>
+        <button class="btn-bingo" id="btn-bingo">✨ BINGO ! (Afficher 20s)</button>
+        <button class="btn-reset" id="btn-reset">Effacer toute la sélection (Nouveau jeu)</button>
+      </div>
+    </div>
+
+    <div class="history-card">
+      <div class="grid-title">
+        <span>Ordre de tirage (<span id="count-history">0</span> numéros)</span>
+        <span id="last-drawn-text" style="color:var(--gold);">Dernier : Aucun</span>
+      </div>
+      <div class="history-tags" id="history-tags"></div>
+    </div>
+
+    <div class="grid-card">
+      <div class="grid-title">
+        <span>Tableau complet 1 à 90 (Cliquez pour marquer / démarquer)</span>
+      </div>
+      <div class="numbers-board" id="numbers-board"></div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCgEMnmlqYBJAKACie9cscUEEtizi1p4ow",
+      authDomain: "bingodrag-d3823.firebaseapp.com",
+      databaseURL: "https://bingodrag-d3823-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "bingodrag-d3823",
+      storageBucket: "bingodrag-d3823.firebasestorage.app",
+      messagingSenderId: "561011306668",
+      appId: "1:561011306668:web:e83e8682e0fe3e6173af09"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const dbRef = firebase.database().ref("bingo_state");
+    const localChannel = new BroadcastChannel("bingo_drag_bus");
+
+    let state = {
+      numbers: [],
+      lastBingoAt: 0
+    };
+
+    function syncState() {
+      localStorage.setItem("bingo_drag_data", JSON.stringify(state));
+      localChannel.postMessage(state);
+      dbRef.set(state);
+      renderAdmin();
+    }
+
+    dbRef.on("value", (snap) => {
+      const val = snap.val();
+      if (val) {
+        state = val;
+        if (!state.numbers) state.numbers = [];
+        renderAdmin();
+      }
+    });
+
+    function renderAdmin() {
+      const nums = state.numbers || [];
+      document.getElementById("count-history").textContent = nums.length;
+      
+      const last = nums[nums.length - 1];
+      document.getElementById("last-drawn-text").textContent = last !== undefined ? `Dernier : ${last}` : "Dernier : Aucun";
+
+      const tagsContainer = document.getElementById("history-tags");
+      tagsContainer.innerHTML = "";
+      nums.slice().reverse().forEach((n, idx) => {
+        const span = document.createElement("span");
+        span.className = "tag";
+        span.textContent = n;
+        if (idx === 0) span.style.borderColor = "var(--gold)";
+        tagsContainer.appendChild(span);
+      });
+
+      for (let i = 1; i <= 90; i++) {
+        const cell = document.getElementById(`cell-${i}`);
+        if (cell) {
+          cell.className = "board-cell";
+          if (nums.includes(i)) {
+            cell.classList.add("selected");
+            if (i === last) {
+              cell.classList.add("last-drawn");
+            }
+          }
+        }
+      }
+    }
+
+    function buildBoard() {
+      const board = document.getElementById("numbers-board");
+      board.innerHTML = "";
+      for (let i = 1; i <= 90; i++) {
+        const cell = document.createElement("div");
+        cell.id = `cell-${i}`;
+        cell.className = "board-cell";
+        cell.textContent = i;
+        cell.addEventListener("click", () => toggleNumber(i));
+        board.appendChild(cell);
+      }
+    }
+
+    function addNumber(num) {
+      if (num < 1 || num > 90 || isNaN(num)) return;
+      if (!state.numbers.includes(num)) {
+        state.numbers.push(num);
+        syncState();
+      }
+    }
+
+    function toggleNumber(num) {
+      if (state.numbers.includes(num)) {
+        state.numbers = state.numbers.filter(n => n !== num);
+      } else {
+        state.numbers.push(num);
+      }
+      syncState();
+    }
+
+    document.getElementById("add-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const input = document.getElementById("manual-input");
+      const val = parseInt(input.value, 10);
+      if (val) {
+        addNumber(val);
+        input.value = "";
+      }
+    });
+
+    document.getElementById("btn-undo").addEventListener("click", () => {
+      if (state.numbers.length > 0) {
+        state.numbers.pop();
+        syncState();
+      }
+    });
+
+    document.getElementById("btn-reset").addEventListener("click", () => {
+      if (confirm("Voulez-vous vraiment effacer TOUS les numéros de la partie ?")) {
+        state.numbers = [];
+        state.lastBingoAt = 0;
+        syncState();
+      }
+    });
+
+    document.getElementById("btn-bingo").addEventListener("click", () => {
+      state.lastBingoAt = Date.now();
+      syncState();
+    });
+
+    buildBoard();
+    const saved = localStorage.getItem("bingo_drag_data");
+    if (saved) {
+      try {
+        state = JSON.parse(saved);
+        if (!state.numbers) state.numbers = [];
+      } catch(e){}
+    }
+    renderAdmin();
+  </script>
+</body>
+</html>
