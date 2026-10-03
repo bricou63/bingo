@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BINGO DRAG - Écran Public</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0a0106;
+      --ruby: #d9044b;
+      --gold: #f5c042;
+      --gold-light: #fff0a8;
+      --card-bg: rgba(20, 2, 10, 0.7);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #400318 0%, #150009 50%, var(--bg-dark) 100%);
+      color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      padding: 18px 24px;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+      border-bottom: 1px solid rgba(245, 192, 66, 0.25);
+    }
+
+    .sub-head {
+      font-size: 0.95rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #ff94ba;
+      font-weight: 700;
+    }
+
+    h1 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      font-weight: 900;
+      letter-spacing: 6px;
+      background: linear-gradient(45deg, #fff 0%, var(--gold-light) 40%, var(--gold) 70%, #d98818 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px rgba(245, 192, 66, 0.45);
+      line-height: 1.1;
+      margin: 4px 0;
+    }
+
+    .hosts {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #ffd6e4;
+      text-shadow: 0 0 10px rgba(217, 4, 75, 0.6);
+    }
+
+    main {
+      flex: 1;
+      padding: 24px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    #welcome-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 20px;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    .heart-icon {
+      font-size: 5rem;
+      color: var(--ruby);
+      animation: pulseHeart 1.6s infinite ease-in-out;
+      filter: drop-shadow(0 0 25px rgba(217,4,75,0.7));
+    }
+
+    @keyframes pulseHeart {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.18); }
+    }
+
+    .welcome-title {
+      font-family: 'Cinzel', serif;
+      font-size: 3rem;
+      color: var(--gold-light);
+    }
+
+    .welcome-text {
+      font-size: 1.4rem;
+      max-width: 650px;
+      color: #f7b5cc;
+    }
+
+    #game-screen {
+      display: none;
+      flex-direction: column;
+      gap: 24px;
+      width: 100%;
+    }
+
+    .recent-bar {
+      background: var(--card-bg);
+      border: 1px solid rgba(245,192,66,0.3);
+      border-radius: 18px;
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(8px);
+    }
+
+    .recent-bar .label {
+      font-size: 1.2rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .recent-bar .number-badge {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #fff;
+      background: linear-gradient(135deg, var(--ruby), #800122);
+      padding: 4px 24px;
+      border-radius: 30px;
+      border: 2px solid var(--gold);
+      box-shadow: 0 0 15px rgba(245,192,66,0.4);
+    }
+
+    .balls-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-content: flex-start;
+      padding: 10px 0;
+    }
+
+    .ball {
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 2.2rem;
+      color: #120005;
+      background: radial-gradient(circle at 32% 30%, #ffffff 0%, var(--gold-light) 25%, var(--gold) 60%, #996200 100%);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.7), inset -4px -4px 10px rgba(0,0,0,0.5), 0 0 12px rgba(245, 192, 66, 0.5);
+      border: 2px solid rgba(255,255,255,0.7);
+      animation: popBall 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+
+    .ball.ruby-ball {
+      color: #fff;
+      background: radial-gradient(circle at 32% 30%, #ff8db3 0%, #e01258 40%, #7e0026 85%, #3d0012 100%);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.7), inset -4px -4px 10px rgba(0,0,0,0.6), 0 0 14px rgba(217, 4, 75, 0.6);
+      border: 2px solid rgba(255,200,220,0.6);
+    }
+
+    @keyframes popBall {
+      0% { transform: scale(0.3); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    #big-number-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 0, 5, 0.88);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 100;
+    }
+
+    .big-ball-container {
+      animation: bounceIn 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .big-ball {
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 30%, #ffffff 0%, var(--gold-light) 25%, var(--gold) 65%, #a86c00 100%);
+      box-shadow: 0 0 80px rgba(245, 192, 66, 0.8), 0 20px 40px rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9.5rem;
+      font-weight: 900;
+      color: #120005;
+      border: 6px solid #fff;
+    }
+
+    .big-ball-label {
+      font-size: 2.2rem;
+      letter-spacing: 5px;
+      color: #fff;
+      margin-top: 25px;
+      font-weight: 700;
+      text-transform: uppercase;
+      text-shadow: 0 0 15px rgba(217,4,75,0.8);
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0.1); opacity: 0; }
+      60% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    #bingo-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle, rgba(160, 4, 55, 0.95) 0%, rgba(30, 0, 15, 0.98) 100%);
+      backdrop-filter: blur(14px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 200;
+      animation: flashBg 1s infinite alternate;
+    }
+
+    .bingo-text {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(5rem, 15vw, 13rem);
+      font-weight: 900;
+      background: linear-gradient(45deg, #fff 0%, #ffeaa7 40%, var(--gold) 70%, #fff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 60px rgba(245, 192, 66, 0.9);
+      animation: pulseBingo 0.7s infinite alternate ease-in-out;
+      letter-spacing: 10px;
+    }
+
+    .bingo-subtext {
+      font-size: clamp(1.4rem, 3vw, 2.5rem);
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      text-shadow: 0 0 20px #000;
+    }
+
+    .bingo-timer-bar {
+      width: 60%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      margin-top: 40px;
+      overflow: hidden;
+    }
+
+    .bingo-timer-progress {
+      width: 100%;
+      height: 100%;
+      background: var(--gold);
+      box-shadow: 0 0 12px var(--gold);
+    }
+
+    @keyframes pulseBingo {
+      0% { transform: scale(0.95); }
+      100% { transform: scale(1.08); }
+    }
+    @keyframes flashBg {
+      0% { background: rgba(160, 4, 55, 0.92); }
+      100% { background: rgba(100, 2, 35, 0.98); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="sub-head">L'Association Corinne Martin présente</div>
+    <h1>BINGO DRAG</h1>
+    <div class="hosts">Animé par Judas & Solaria Morningstar</div>
+  </header>
+
+  <main>
+    <div id="welcome-screen">
+      <div class="heart-icon">♥</div>
+      <div class="welcome-title">Bienvenue au Bingo Drag !</div>
+      <div class="welcome-text">Préparez vos grilles, vos feutres et vos plus beaux sourires. Le tirage va bientôt commencer !</div>
+    </div>
+
+    <div id="game-screen">
+      <div class="recent-bar">
+        <span class="label">Dernier numéro tiré</span>
+        <span class="number-badge" id="last-number-display">-</span>
+        <span class="label" id="total-count-display">0 numéro sorti</span>
+      </div>
+      <div class="balls-grid" id="balls-grid"></div>
+    </div>
+  </main>
+
+  <div id="big-number-overlay">
+    <div class="big-ball-container">
+      <div class="big-ball" id="big-ball-val">--</div>
+    </div>
+    <div class="big-ball-label">Numéro Tiré !</div>
+  </div>
+
+  <div id="bingo-overlay">
+    <div class="bingo-text">BINGO !</div>
+    <div class="bingo-subtext">Vérification de la grille en cours...</div>
+    <div class="bingo-timer-bar">
+      <div class="bingo-timer-progress" id="bingo-progress"></div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCgEMnmlqYBJAKACie9cscUEEtizi1p4ow",
+      authDomain: "bingodrag-d3823.firebaseapp.com",
+      databaseURL: "https://bingodrag-d3823-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "bingodrag-d3823",
+      storageBucket: "bingodrag-d3823.firebasestorage.app",
+      messagingSenderId: "561011306668",
+      appId: "1:561011306668:web:e83e8682e0fe3e6173af09"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const dbRef = firebase.database().ref("bingo_state");
+    const localChannel = new BroadcastChannel("bingo_drag_bus");
+
+    let currentNumbers = [];
+    let lastAnimatedNumber = null;
+    let bigNumberTimeout = null;
+    let bingoInterval = null;
+
+    function renderState(state) {
+      if (!state) state = { numbers: [], lastBingoAt: 0 };
+      const numbers = state.numbers || [];
+      const welcome = document.getElementById("welcome-screen");
+      const game = document.getElementById("game-screen");
+      const ballsGrid = document.getElementById("balls-grid");
+      const lastBadge = document.getElementById("last-number-display");
+      const totalBadge = document.getElementById("total-count-display");
+
+      if (numbers.length === 0) {
+        welcome.style.display = "flex";
+        game.style.display = "none";
+        ballsGrid.innerHTML = "";
+        lastAnimatedNumber = null;
+        currentNumbers = [];
+        return;
+      }
+
+      welcome.style.display = "none";
+      game.style.display = "flex";
+
+      const lastNum = numbers[numbers.length - 1];
+      lastBadge.textContent = lastNum;
+      totalBadge.textContent = `${numbers.length} numéro${numbers.length > 1 ? 's' : ''} sorti${numbers.length > 1 ? 's' : ''}`;
+
+      if (lastNum !== lastAnimatedNumber && numbers.length > currentNumbers.length) {
+        showBigNumber(lastNum);
+      }
+      lastAnimatedNumber = lastNum;
+      currentNumbers = [...numbers];
+
+      ballsGrid.innerHTML = "";
+      numbers.forEach((num, index) => {
+        const ball = document.createElement("div");
+        ball.className = `ball ${index % 2 === 1 ? 'ruby-ball' : ''}`;
+        ball.textContent = num;
+        ballsGrid.appendChild(ball);
+      });
+
+      const now = Date.now();
+      if (state.lastBingoAt && (now - state.lastBingoAt < 20000)) {
+        const remaining = 20000 - (now - state.lastBingoAt);
+        triggerBingoScreen(remaining);
+      }
+    }
+
+    function showBigNumber(num) {
+      const overlay = document.getElementById("big-number-overlay");
+      const ballVal = document.getElementById("big-ball-val");
+      ballVal.textContent = num;
+      overlay.style.display = "flex";
+
+      confetti({
+        particleCount: 50,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#f5c042', '#d9044b', '#ffffff']
+      });
+
+      clearTimeout(bigNumberTimeout);
+      bigNumberTimeout = setTimeout(() => {
+        overlay.style.display = "none";
+      }, 5000);
+    }
+
+    function triggerBingoScreen(durationMs = 20000) {
+      const overlay = document.getElementById("bingo-overlay");
+      const progress = document.getElementById("bingo-progress");
+      overlay.style.display = "flex";
+
+      const endConfetti = Date.now() + 6000;
+      (function frame() {
+        confetti({
+          particleCount: 4,
+          angle: 60,
+          spread: 60,
+          origin: { x: 0 },
+          colors: ['#f5c042', '#d9044b', '#fff']
+        });
+        confetti({
+          particleCount: 4,
+          angle: 120,
+          spread: 60,
+          origin: { x: 1 },
+          colors: ['#f5c042', '#d9044b', '#fff']
+        });
+        if (Date.now() < endConfetti) requestAnimationFrame(frame);
+      })();
+
+      const startTime = Date.now();
+      clearInterval(bingoInterval);
+      bingoInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const leftPercent = Math.max(0, 100 - (elapsed / durationMs * 100));
+        progress.style.width = leftPercent + "%";
+
+        if (elapsed >= durationMs) {
+          clearInterval(bingoInterval);
+          overlay.style.display = "none";
+        }
+      }, 50);
+    }
+
+    dbRef.on("value", (snapshot) => {
+      renderState(snapshot.val());
+    });
+
+    localChannel.onmessage = (event) => {
+      renderState(event.data);
+    };
+
+    const saved = localStorage.getItem("bingo_drag_data");
+    if (saved) {
+      try { renderState(JSON.parse(saved)); } catch(e){}
+    }
+  </script>
+</body>
+</html>
