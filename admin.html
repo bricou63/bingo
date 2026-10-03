@@ -61,6 +61,60 @@
       gap: 18px;
     }
 
+    /* Section YouTube */
+    .yt-section {
+      background: #14020e;
+      border: 1px dashed rgba(245, 192, 66, 0.4);
+      padding: 16px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .yt-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .yt-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .yt-input {
+      flex: 1;
+      min-width: 250px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: #000;
+      color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.9rem;
+    }
+
+    .btn-yt {
+      padding: 12px 20px;
+      font-size: 0.95rem;
+      background: #3a1c28;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+    }
+
+    .btn-yt.active {
+      background: linear-gradient(135deg, #097931, #0c9e40);
+      color: #fff;
+      border-color: #72ff99;
+      box-shadow: 0 0 12px rgba(12, 158, 64, 0.5);
+    }
+
+    /* Tirage classique */
     .input-row {
       display: flex;
       gap: 12px;
@@ -101,8 +155,8 @@
     }
 
     .actions-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
+      flex-direction: column;
       gap: 12px;
     }
 
@@ -110,26 +164,25 @@
       background: #3a1c28;
       border: 1px solid #ff5983;
       color: #ff9cb6;
-      padding: 14px;
-      font-size: 1rem;
+      padding: 16px;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
     }
 
     .btn-bingo {
-      grid-column: span 2;
       background: linear-gradient(135deg, var(--ruby), #96002f);
       color: #fff;
       font-size: 1.4rem;
       letter-spacing: 3px;
-      padding: 16px;
+      padding: 18px;
       box-shadow: 0 0 20px rgba(217, 4, 75, 0.4);
     }
 
     .btn-reset {
-      grid-column: span 2;
       background: transparent;
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: #999;
-      padding: 10px;
+      padding: 12px;
       font-size: 0.85rem;
     }
 
@@ -225,14 +278,25 @@
     </header>
 
     <div class="controls-card">
+      <!-- Section Musique / Playlist YouTube d'accueil -->
+      <div class="yt-section">
+        <div class="yt-title">
+          <span>🎵 Ambiance d'accueil (Playlist / Vidéo YouTube)</span>
+        </div>
+        <div class="yt-row">
+          <input type="text" id="yt-url-input" class="yt-input" placeholder="Collez l'URL de votre playlist ou vidéo YouTube...">
+          <button id="btn-toggle-yt" class="btn-yt">🎬 Activer sur l'écran</button>
+        </div>
+      </div>
+
+      <!-- Tirage du numéro -->
       <form id="add-form" class="input-row">
         <input type="number" id="manual-input" min="1" max="90" placeholder="N°" autofocus required>
         <button type="submit" class="btn-submit">Valider</button>
       </form>
 
       <div class="actions-grid">
-        <button class="btn-undo" id="btn-undo">↩ Annuler le dernier</button>
-        <button class="btn-undo" id="btn-sound-test" style="border-color:#555; color:#ddd;">Régie OK</button>
+        <button class="btn-undo" id="btn-undo">↩ Annuler le dernier numéro</button>
         <button class="btn-bingo" id="btn-bingo">✨ BINGO ! (Afficher 20s)</button>
         <button class="btn-reset" id="btn-reset">Effacer toute la sélection (Nouveau jeu)</button>
       </div>
@@ -271,7 +335,9 @@
 
     let state = {
       numbers: [],
-      lastBingoAt: 0
+      lastBingoAt: 0,
+      showYoutube: false,
+      youtubeUrl: ""
     };
 
     function syncState() {
@@ -297,6 +363,21 @@
       const last = nums[nums.length - 1];
       document.getElementById("last-drawn-text").textContent = last !== undefined ? `Dernier : ${last}` : "Dernier : Aucun";
 
+      // Gestion bouton YouTube
+      const btnYt = document.getElementById("btn-toggle-yt");
+      const inputYt = document.getElementById("yt-url-input");
+      if (state.youtubeUrl && !inputYt.value) {
+        inputYt.value = state.youtubeUrl;
+      }
+      if (state.showYoutube) {
+        btnYt.classList.add("active");
+        btnYt.textContent = "⏹ Masquer la vidéo";
+      } else {
+        btnYt.classList.remove("active");
+        btnYt.textContent = "🎬 Activer sur l'écran";
+      }
+
+      // Historique
       const tagsContainer = document.getElementById("history-tags");
       tagsContainer.innerHTML = "";
       nums.slice().reverse().forEach((n, idx) => {
@@ -307,6 +388,7 @@
         tagsContainer.appendChild(span);
       });
 
+      // Grille
       for (let i = 1; i <= 90; i++) {
         const cell = document.getElementById(`cell-${i}`);
         if (cell) {
@@ -338,6 +420,8 @@
       if (num < 1 || num > 90 || isNaN(num)) return;
       if (!state.numbers.includes(num)) {
         state.numbers.push(num);
+        // Si la vidéo était affichée, commencer le jeu la masque
+        state.showYoutube = false;
         syncState();
       }
     }
@@ -347,9 +431,22 @@
         state.numbers = state.numbers.filter(n => n !== num);
       } else {
         state.numbers.push(num);
+        state.showYoutube = false;
       }
       syncState();
     }
+
+    // Toggle YouTube
+    document.getElementById("btn-toggle-yt").addEventListener("click", () => {
+      const url = document.getElementById("yt-url-input").value.trim();
+      if (!url && !state.showYoutube) {
+        alert("Veuillez coller un lien YouTube (playlist ou vidéo) d'abord !");
+        return;
+      }
+      state.youtubeUrl = url;
+      state.showYoutube = !state.showYoutube;
+      syncState();
+    });
 
     document.getElementById("add-form").addEventListener("submit", (e) => {
       e.preventDefault();
